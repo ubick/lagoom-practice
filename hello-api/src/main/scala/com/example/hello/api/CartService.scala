@@ -1,13 +1,11 @@
 package com.example.hello.api
 
-import akka.{Done, NotUsed}
-import com.lightbend.lagom.scaladsl.api.broker.Topic
-import com.lightbend.lagom.scaladsl.api.broker.kafka.{KafkaProperties, PartitionKeyStrategy}
+import akka.Done
 import com.lightbend.lagom.scaladsl.api.transport.Method
 import com.lightbend.lagom.scaladsl.api.{Service, ServiceCall}
 import play.api.libs.json.{Format, Json}
 
-object HelloService  {
+object HelloService {
   val TOPIC_NAME = "greetings"
 }
 
@@ -19,8 +17,6 @@ object HelloService  {
   */
 trait CartService extends Service {
 
-  def addProductToCart(id: String): ServiceCall[AddToCartRequest, Done]
-
   override final def descriptor = {
     import Service._
     // @formatter:off
@@ -31,6 +27,8 @@ trait CartService extends Service {
       .withAutoAcl(true)
     // @formatter:on
   }
+
+  def addProductToCart(id: String): ServiceCall[AddToCartRequest, Done]
 }
 
 /**
@@ -39,6 +37,7 @@ trait CartService extends Service {
 case class GreetingMessage(message: String)
 
 case class AddToCartRequest(cart: String, product: String)
+
 case class Product(product: String)
 
 object GreetingMessage {
@@ -50,13 +49,13 @@ object GreetingMessage {
   implicit val format: Format[GreetingMessage] = Json.format[GreetingMessage]
 }
 
-object AddToCart {
+object AddToCartRequest {
   /**
     * Format for converting greeting messages to and from JSON.
     *
     * This will be picked up by a Lagom implicit conversion from Play's JSON format to Lagom's message serializer.
     */
-  implicit val format: Format[AddToCart] = Json.format[AddToCart]
+  implicit val format: Format[AddToCartRequest] = Json.format[AddToCartRequest]
 }
 
 object Product {

@@ -1,6 +1,6 @@
 package com.example.hello.impl
 
-import com.example.hello.api.{AddToCart, CartService}
+import com.example.hello.api.{AddToCartRequest, CartService}
 import com.lightbend.lagom.scaladsl.api.ServiceCall
 import com.lightbend.lagom.scaladsl.persistence.PersistentEntityRegistry
 

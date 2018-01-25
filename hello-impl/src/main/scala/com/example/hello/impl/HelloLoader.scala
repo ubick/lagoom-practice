@@ -37,4 +37,5 @@ abstract class HelloApplication(context: LagomApplicationContext)
 
   // Register the Hello persistent entity
   persistentEntityRegistry.register(wire[HelloEntity])
+  persistentEntityRegistry.register(wire[CartEntity])
 }

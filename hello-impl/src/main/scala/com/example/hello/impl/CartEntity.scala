@@ -4,8 +4,8 @@ import java.time.LocalDateTime
 
 import akka.Done
 import com.example.hello.api.Product
-import com.lightbend.lagom.scaladsl.persistence.{AggregateEvent, AggregateEventTag, PersistentEntity}
 import com.lightbend.lagom.scaladsl.persistence.PersistentEntity.ReplyType
+import com.lightbend.lagom.scaladsl.persistence.{AggregateEvent, AggregateEventTag, PersistentEntity}
 import com.lightbend.lagom.scaladsl.playjson.{JsonSerializer, JsonSerializerRegistry}
 import play.api.libs.json.{Format, Json}
 
@@ -34,45 +34,33 @@ class CartEntity extends PersistentEntity {
 
   override type Event = CartEvent
   override type State = CartState
-  override type Command = CartCommand
+  override type Command = CartCommand[_]
+
+  override def behavior: Behavior = {
+    case CartState(message, _) => Actions().onCommand[AddToCartCommand, Done] {
+
+      // Command handler for the UseGreetingMessage command
+      case (AddToCartCommand(cart, product), ctx, state) =>
+        // In response to this command, we want to first persist it as a
+        // GreetingMessageChanged event
+        ctx.thenPersist(
+          AddedToCartEvent(cart, product)
+        ) { _ =>
+          // Then once the event is successfully persisted, we respond with done.
+          ctx.reply(Done)
+        }
+    }.onEvent {
+
+      // Event handler for the GreetingMessageChanged event
+      case (AddedToCartEvent(cart, product), state) =>
+        CartState(cart, Product(product)::state.products)
+    }
+  }
 
   /**
     * The initial state. This is used if there is no snapshotted state to be found.
     */
-  override def initialState: Option[CartState] = None
-
-
-  case class CartState(cart: String, products: List[Product])
-
-  object CartState {
-    /**
-      * Format for the hello state.
-      *
-      * Persisted entities get snapshotted every configured number of events. This
-      * means the state gets stored to the database, so that when the entity gets
-      * loaded, you don't need to replay all the events, just the ones since the
-      * snapshot. Hence, a JSON format needs to be declared so that it can be
-      * serialized and deserialized when storing to and from the database.
-      */
-    implicit val format: Format[CartState] = Json.format
-  }
-
-  /**
-    * This interface defines all the events that the HelloEntity supports.
-    */
-  sealed trait CartEvent extends AggregateEvent[CartEvent] {
-    def aggregateTag = CartEvent.Tag
-  }
-
-  object CartEvent {
-    val Tag: AggregateEventTag[CartEvent] = AggregateEventTag[CartEvent]
-  }
-
-class CartEntity extends PersistentEntity {
-}
-
-case class AddToCartCommand(cart: String, product: String) extends CartCommand
-
+  override def initialState: CartState = CartState("cart", List.empty)
 
   /**
     * Akka serialization, used by both persistence and remoting, needs to have
@@ -88,4 +76,36 @@ case class AddToCartCommand(cart: String, product: String) extends CartCommand
       JsonSerializer[CartState]
     )
   }
+}
+
+case class AddToCartCommand(cart: String, product: String) extends CartCommand[Done]
+case class AddedToCartEvent(cart: String, product: String) extends CartEvent
+
+
+sealed trait CartCommand[R] extends ReplyType[R]
+
+/**
+  * This interface defines all the events that the HelloEntity supports.
+  */
+sealed trait CartEvent extends AggregateEvent[CartEvent] {
+  def aggregateTag = CartEvent.Tag
+}
+
+object CartEvent {
+  val Tag: AggregateEventTag[CartEvent] = AggregateEventTag[CartEvent]
+}
+
+case class CartState(cart: String, products: List[Product])
+
+object CartState {
+  /**
+    * Format for the hello state.
+    *
+    * Persisted entities get snapshotted every configured number of events. This
+    * means the state gets stored to the database, so that when the entity gets
+    * loaded, you don't need to replay all the events, just the ones since the
+    * snapshot. Hence, a JSON format needs to be declared so that it can be
+    * serialized and deserialized when storing to and from the database.
+    */
+  implicit val format: Format[CartState] = Json.format
 }
