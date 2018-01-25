@@ -34,6 +34,7 @@ class CartEntity extends PersistentEntity {
 
   override type Event = CartEvent
   override type State = CartState
+  override type Command = CartCommand
 
   /**
     * The initial state. This is used if there is no snapshotted state to be found.
@@ -66,6 +67,11 @@ class CartEntity extends PersistentEntity {
   object CartEvent {
     val Tag: AggregateEventTag[CartEvent] = AggregateEventTag[CartEvent]
   }
+
+class CartEntity extends PersistentEntity {
+}
+
+case class AddToCartCommand(cart: String, product: String) extends CartCommand
 
 
   /**

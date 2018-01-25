@@ -9,9 +9,9 @@ import com.lightbend.lagom.scaladsl.persistence.PersistentEntityRegistry
   */
 class CartServiceImpl(persistentEntityRegistry: PersistentEntityRegistry) extends CartService {
 
-  override def addProductToCart() = ServiceCall { r: AddToCart =>
-    val ref = persistentEntityRegistry.refFor[HelloEntity](id)
+  override def addProductToCart(id: String) = ServiceCall { r: AddToCartRequest =>
+    val ref = persistentEntityRegistry.refFor[CartEntity](id)
 
-    ref.ask(HelloSecond(id, second))
+    ref.ask(AddToCartCommand(r.cart, r.product))
   }
 }

@@ -19,7 +19,7 @@ object HelloService  {
   */
 trait CartService extends Service {
 
-  def addProductToCart(id: String): ServiceCall[AddToCart, Done]
+  def addProductToCart(id: String): ServiceCall[AddToCartRequest, Done]
 
   override final def descriptor = {
     import Service._
@@ -38,7 +38,7 @@ trait CartService extends Service {
   */
 case class GreetingMessage(message: String)
 
-case class AddToCart(cart: String, product: String)
+case class AddToCartRequest(cart: String, product: String)
 case class Product(product: String)
 
 object GreetingMessage {
