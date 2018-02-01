@@ -1,7 +1,5 @@
 package com.example.hello.impl
 
-import java.time.LocalDateTime
-
 import akka.Done
 import com.example.hello.api.Product
 import com.lightbend.lagom.scaladsl.persistence.PersistentEntity.ReplyType
@@ -37,30 +35,37 @@ class CartEntity extends PersistentEntity {
   override type Command = CartCommand[_]
 
   override def behavior: Behavior = {
-    case CartState(message, _) => Actions().onCommand[AddToCartCommand, Done] {
-
-      // Command handler for the UseGreetingMessage command
-      case (AddToCartCommand(cart, product), ctx, state) =>
-        // In response to this command, we want to first persist it as a
-        // GreetingMessageChanged event
+    case CartState(_) => Actions()
+    .onCommand[AddToCartCommand, Done] {
+      case (AddToCartCommand(product), ctx, state) =>
         ctx.thenPersist(
-          AddedToCartEvent(cart, product)
+          AddedToCartEvent(product)
         ) { _ =>
-          // Then once the event is successfully persisted, we respond with done.
           ctx.reply(Done)
         }
+    }.onCommand[RemoveFromCartCommand, Done] {
+      case (RemoveFromCartCommand(product), ctx, state) =>
+        ctx.thenPersist(
+          RemovedFromCartEvent(product)
+        ) { _ =>
+          ctx.reply(Done)
+        }
+    }.onReadOnlyCommand[ShowCartCommand.type, List[Product]] {
+      case (ShowCartCommand, ctx, state) =>
+        ctx.reply(state.products)
     }.onEvent {
-
-      // Event handler for the GreetingMessageChanged event
-      case (AddedToCartEvent(cart, product), state) =>
-        CartState(cart, Product(product)::state.products)
+      case (AddedToCartEvent(product), state) =>
+        CartState(Product(product)::state.products)
+      case (RemovedFromCartEvent(product), state) => {
+        CartState(state.products.filterNot(_.product == product))
+      }
     }
   }
 
   /**
     * The initial state. This is used if there is no snapshotted state to be found.
     */
-  override def initialState: CartState = CartState("cart", List.empty)
+  override def initialState: CartState = CartState(List.empty)
 
   /**
     * Akka serialization, used by both persistence and remoting, needs to have
@@ -78,14 +83,16 @@ class CartEntity extends PersistentEntity {
   }
 }
 
-case class AddToCartCommand(cart: String, product: String) extends CartCommand[Done]
-case class AddedToCartEvent(cart: String, product: String) extends CartEvent
-
+case class AddToCartCommand(product: String) extends CartCommand[Done]
+case class RemoveFromCartCommand(product: String) extends CartCommand[Done]
+case class AddedToCartEvent(product: String) extends CartEvent
+case class RemovedFromCartEvent(product: String) extends CartEvent
+case object ShowCartCommand extends CartCommand[List[Product]]
 
 sealed trait CartCommand[R] extends ReplyType[R]
 
 /**
-  * This interface defines all the events that the HelloEntity supports.
+  * This interface defines all the events that the CartEntity supports.
   */
 sealed trait CartEvent extends AggregateEvent[CartEvent] {
   def aggregateTag = CartEvent.Tag
@@ -95,11 +102,11 @@ object CartEvent {
   val Tag: AggregateEventTag[CartEvent] = AggregateEventTag[CartEvent]
 }
 
-case class CartState(cart: String, products: List[Product])
+case class CartState(products: List[Product])
 
 object CartState {
   /**
-    * Format for the hello state.
+    * Format for the cart state.
     *
     * Persisted entities get snapshotted every configured number of events. This
     * means the state gets stored to the database, so that when the entity gets
